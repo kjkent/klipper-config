@@ -1,0 +1,61 @@
+x-defaults: &defaults
+  restart: unless-stopped
+  #logging:
+  #  driver: none
+
+services:
+  klipper:
+    <<: *defaults
+    container_name: klipper
+    devices:
+      - /dev/ttyUSB0
+    group_add:
+      - 27
+    image: mkuf/klipper:latest
+    command: >
+      -I /opt/printer_data/run/klipper.tty
+      -a /opt/printer_data/run/klipper.sock
+      -l /opt/printer_data/logs/klippy.log
+      /opt/printer_data/config/printer.cfg
+    volumes:
+      - .:/opt/printer_data/config
+      - run:/opt/printer_data/run
+      - gcode:/opt/printer_data/gcodes
+      - log:/opt/printer_data/logs
+
+  moonraker:
+    <<: *defaults
+    container_name: moonraker
+    image: mkuf/moonraker:latest
+    depends_on:
+      klipper:
+        condition: service_started
+    volumes:
+      - /dev/null:/opt/klipper/config/null
+      - /dev/null:/opt/klipper/docs/null
+      - run:/opt/printer_data/run
+      - gcode:/opt/printer_data/gcodes
+      - log:/opt/printer_data/logs
+      - moonraker-db:/opt/printer_data/database
+      - .:/opt/printer_data/config
+      - ./moonraker.secrets:/opt/printer_data/moonraker.secrets
+    ports:
+      - 7125:7125
+
+  fluidd:
+    <<: *defaults
+    image: ghcr.io/fluidd-core/fluidd:latest
+    ports: 
+      - 80:80
+
+volumes:
+  run:
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
+  gcode:
+  moonraker-db:
+  log:
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
