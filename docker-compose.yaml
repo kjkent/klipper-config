@@ -1,14 +1,14 @@
 x-defaults: &defaults
   restart: unless-stopped
-  #logging:
-  #  driver: none
+  logging:
+    driver: none
 
 services:
   klipper:
     <<: *defaults
     container_name: klipper
     devices:
-      - /dev/ttyUSB0
+      - /dev/tty3D:/dev/ttyUSB0
     group_add:
       - 27
     image: mkuf/klipper:latest
@@ -44,6 +44,7 @@ services:
 
   fluidd:
     <<: *defaults
+    container_name: fluidd
     image: ghcr.io/fluidd-core/fluidd:latest
     ports: 
       - 80:80
