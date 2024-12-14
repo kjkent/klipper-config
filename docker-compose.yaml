@@ -2,15 +2,17 @@ x-defaults: &defaults
   restart: unless-stopped
   logging:
     driver: none
+  networks:
+    - traefik-proxy
 
 services:
   klipper:
     <<: *defaults
     container_name: klipper
     devices:
-      - /dev/tty3D:/dev/ttyUSB0
+      - /dev/tty3dPrinter:/dev/ttyUSB0
     group_add:
-      - 27
+      - 995
     image: mkuf/klipper:latest
     command: >
       -I /opt/printer_data/run/klipper.tty
@@ -30,6 +32,11 @@ services:
     depends_on:
       klipper:
         condition: service_started
+    labels:
+      traefik.enable: true
+      traefik.http.services.moonraker.loadbalancer.server.port: 7125
+      traefik.http.routers.moonraker.entrypoints: "websecure"
+      traefik.http.routers.moonraker.rule: Host(`3d.x000.dev`) && PathRegexp(`^/(websocket|printer|api|access|machine|server)`)
     volumes:
       - /dev/null:/opt/klipper/config/null
       - /dev/null:/opt/klipper/docs/null
@@ -39,15 +46,21 @@ services:
       - moonraker-db:/opt/printer_data/database
       - .:/opt/printer_data/config
       - ./moonraker.secrets:/opt/printer_data/moonraker.secrets
-    ports:
-      - 7125:7125
 
   fluidd:
     <<: *defaults
     container_name: fluidd
     image: ghcr.io/fluidd-core/fluidd:latest
-    ports: 
-      - 80:80
+    labels:
+      traefik.enable: true
+      traefik.http.services.fluidd.loadbalancer.server.port: 80
+      traefik.http.routers.fluidd.rule: Host(`3d.x000.dev`)
+      traefik.http.routers.fluidd.entrypoints: "websecure"
+
+networks:
+  traefik-proxy:
+    name: traefik-proxy
+    external: true
 
 volumes:
   run:

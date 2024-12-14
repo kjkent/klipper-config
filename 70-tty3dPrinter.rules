@@ -1,0 +1,6 @@
+# Put me at `/etc/udev/rules.d/70-tty3dPrinter.rules` to enable a persistent
+# symlink to a CH341-connected 3D printer at `/dev/tty3dPrinter`.
+# This avoids device-not-found issues when a reconnected printer 
+# enumerates to `/dev/ttyUSB{n+1}`.
+
+KERNEL=="ttyUSB[0-9]*", SUBSYSTEMS=="usb", ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="7523", GROUP="klipper", TAG+="uaccess", MODE="0660", SYMLINK+="tty3dPrinter"
