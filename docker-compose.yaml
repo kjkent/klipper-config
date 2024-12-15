@@ -4,11 +4,27 @@ x-defaults: &defaults
     driver: none
   networks:
     - traefik-proxy
+  user: $DOCKER_UID:$DOCKER_GID
 
 services:
+  klipper-chown:
+    container_name: klipper-chown
+    extends:
+      file: ../utils.yaml
+      service: chown
+    volumes:
+      - gcode:/chown/gcode
+      - log:/chown/log
+      - moonraker-db:/chown/moonraker-db
+      - nginx-cache:/chown/nginx-cache
+      - run:/chown/run
+
   klipper:
     <<: *defaults
     container_name: klipper
+    depends_on:
+      klipper-chown:
+        condition: service_completed_successfully
     devices:
       - /dev/tty3dPrinter:/dev/ttyUSB0
     group_add:
@@ -30,6 +46,8 @@ services:
     container_name: moonraker
     image: mkuf/moonraker:latest
     depends_on:
+      klipper-chown:
+        condition: service_completed_successfully
       klipper:
         condition: service_started
     labels:
@@ -37,9 +55,12 @@ services:
       traefik.http.services.moonraker.loadbalancer.server.port: 7125
       traefik.http.routers.moonraker.entrypoints: "websecure"
       traefik.http.routers.moonraker.rule: Host(`3d.x000.dev`) && PathRegexp(`^/(websocket|printer|api|access|machine|server)`)
+    pid: host
     volumes:
       - /dev/null:/opt/klipper/config/null
       - /dev/null:/opt/klipper/docs/null
+      - /run/dbus:/run/dbus          # < TODO: This feels SUPER SKETCHY
+      - /run/systemd:/run/systemd    # < "There's got to be a better way!"
       - run:/opt/printer_data/run
       - gcode:/opt/printer_data/gcodes
       - log:/opt/printer_data/logs
@@ -49,13 +70,21 @@ services:
 
   fluidd:
     <<: *defaults
+    cap_add:
+      - NET_BIND_SERVICE
     container_name: fluidd
+    depends_on:
+      klipper-chown:
+        condition: service_completed_successfully
     image: ghcr.io/fluidd-core/fluidd:latest
     labels:
       traefik.enable: true
       traefik.http.services.fluidd.loadbalancer.server.port: 80
       traefik.http.routers.fluidd.rule: Host(`3d.x000.dev`)
       traefik.http.routers.fluidd.entrypoints: "websecure"
+    volumes:
+      - nginx-cache:/var/cache/nginx
+      - run:/var/run
 
 networks:
   traefik-proxy:
@@ -63,13 +92,17 @@ networks:
     external: true
 
 volumes:
-  run:
+  gcode:
+  log:
     driver_opts:
       type: tmpfs
       device: tmpfs
-  gcode:
   moonraker-db:
-  log:
+  nginx-cache:
+    driver_opts:
+      type: tmpfs
+      device: tmps
+  run:
     driver_opts:
       type: tmpfs
       device: tmpfs
