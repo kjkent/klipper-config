@@ -1,0 +1,16 @@
+#[mcu rpi]
+#serial: /tmp/klipper_host_mcu
+
+## For hotend
+#[adxl345]
+#cs_pin: rpi:None
+#axes_map: y, -x, z
+
+## For bed
+#[adxl345]
+#cs_pin: rpi:None
+#axes_map: x, y, z
+
+#[resonance_tester]
+#accel_chip: adxl345
+#probe_points: 112.5, 112.5, 20

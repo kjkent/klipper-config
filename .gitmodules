@@ -1,3 +1,0 @@
-[submodule "fluidd-config"]
-	path = fluidd-config
-	url = https://github.com/fluidd-core/fluidd-config
